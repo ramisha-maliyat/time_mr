@@ -1,420 +1,319 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import Footer from "@/components/Footer";
 import { locations } from "@/data/locations";
-import { getTimezoneOffsetLabel } from "@/lib/time";
+import { LocationItem } from "@/types/location";
+import {
+  getDateByTimezone,
+  getShortTime,
+  getTimeByTimezone,
+} from "@/lib/time";
 
-function getDateTimeForDisplay(date: Date, timezone: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: timezone,
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-}
-
-function getOnlyTime(date: Date, timezone: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-}
-
-function getOnlyDate(date: Date, timezone: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: timezone,
-    weekday: "long",
-    hour12: false,
-  }).format(date);
-}
-
-function getTimezoneHourDifference(fromTimezone: string, toTimezone: string) {
-  const now = new Date();
-
-  const fromParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: fromTimezone,
-    hour: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
-
-  const toParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: toTimezone,
-    hour: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
-
-  const fromHour = Number(fromParts.find((part) => part.type === "hour")?.value);
-  const toHour = Number(toParts.find((part) => part.type === "hour")?.value);
-
-  let difference = toHour - fromHour;
-
-  if (difference > 12) difference -= 24;
-  if (difference < -12) difference += 24;
-
-  if (difference === 0) return "same time";
-  if (difference > 0) return `+${difference}h`;
-  return `${difference}h`;
-}
-
-export default function ConverterPage() {
-  const now = new Date();
-
-  const [fromTimezone, setFromTimezone] = useState("Asia/Dhaka");
-  const [toTimezone, setToTimezone] = useState("Europe/Paris");
-  const [thirdTimezone, setThirdTimezone] = useState("");
-  const [date, setDate] = useState(now.toISOString().slice(0, 10));
-  const [time, setTime] = useState("08:00");
-  const [eventName, setEventName] = useState("Birthday");
-  const [mode, setMode] = useState<"single" | "table">("single");
-  const [submitted, setSubmitted] = useState(false);
-
-  const fromLocation = locations.find(
-    (location) => location.timezone === fromTimezone
+export default function Home() {
+  const [selectedLocation, setSelectedLocation] = useState<LocationItem>(
+    locations[0]
   );
 
-  const toLocation = locations.find(
-    (location) => location.timezone === toTimezone
-  );
+  const [time, setTime] = useState("");
+  const [date, setDate] = useState("");
+  const [deviceDifference, setDeviceDifference] = useState<number | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [clockFormat, setClockFormat] = useState("24");
 
-  const thirdLocation = locations.find(
-    (location) => location.timezone === thirdTimezone
-  );
+  useEffect(() => {
+    const savedFormat = localStorage.getItem("time_mr_clock_format");
 
-  const selectedLocations = [fromLocation, toLocation, thirdLocation].filter(
-    Boolean
-  ) as typeof locations;
+    if (savedFormat) {
+      setClockFormat(savedFormat);
+    }
+  }, []);
 
-  const convertedDate = useMemo(() => {
-    return new Date(`${date}T${time}:00`);
-  }, [date, time]);
+  useEffect(() => {
+    const updateClock = () => {
+      setTime(getTimeByTimezone(selectedLocation.timezone, clockFormat === "12"));
+      setDate(getDateByTimezone(selectedLocation.timezone));
+    };
 
-  const tableRows = useMemo(() => {
-    return Array.from({ length: 24 }, (_, index) => {
-      const rowDate = new Date(`${date}T00:00:00`);
-      rowDate.setHours(index);
+    updateClock();
 
-      return {
-        base: rowDate,
-        baseTime: getOnlyTime(rowDate, fromTimezone),
-        targetTime: getOnlyTime(rowDate, toTimezone),
-        baseDay: getOnlyDate(rowDate, fromTimezone),
-        targetDay: getOnlyDate(rowDate, toTimezone),
-      };
-    });
-  }, [date, fromTimezone, toTimezone]);
+    const interval = setInterval(updateClock, 1000);
 
-  const fromTime = fromLocation
-    ? getOnlyTime(convertedDate, fromLocation.timezone)
-    : "";
+    return () => clearInterval(interval);
+  }, [selectedLocation, clockFormat]);
 
-  const toTime = toLocation
-    ? getOnlyTime(convertedDate, toLocation.timezone)
-    : "";
+  useEffect(() => {
+    async function checkDeviceTime() {
+      try {
+        const requestStart = Date.now();
 
-  const timeDifference =
-    fromLocation && toLocation
-      ? getTimezoneHourDifference(fromLocation.timezone, toLocation.timezone)
-      : "";
+        const response = await fetch("/api/server-time", {
+          cache: "no-store",
+        });
+
+        const data = await response.json();
+
+        const requestEnd = Date.now();
+        const roundTrip = requestEnd - requestStart;
+        const estimatedServerTime = data.serverTime + roundTrip / 2;
+
+        const differenceInSeconds = (requestEnd - estimatedServerTime) / 1000;
+
+        setDeviceDifference(differenceInSeconds);
+      } catch {
+        setDeviceDifference(null);
+      }
+    }
+
+    checkDeviceTime();
+
+    const interval = setInterval(checkDeviceTime, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  let deviceMessage = "Checking your device clock...";
+
+  if (deviceDifference !== null) {
+    const value = Math.abs(deviceDifference).toFixed(1);
+
+    if (deviceDifference > 0.5) {
+      deviceMessage = `Your device clock is ${value} seconds ahead.`;
+    } else if (deviceDifference < -0.5) {
+      deviceMessage = `Your device clock is ${value} seconds behind.`;
+    } else {
+      deviceMessage = "Your device clock is accurate.";
+    }
+  }
+
+  const filteredLocations = locations.filter((location) => {
+    const text = searchText.toLowerCase();
+
+    return (
+      location.city.toLowerCase().includes(text) ||
+      location.country.toLowerCase().includes(text) ||
+      location.timezone.toLowerCase().includes(text)
+    );
+  });
 
   return (
-    <main className="min-h-screen bg-white px-6 py-8 text-[#2b2b2b] md:px-12">
+    <main className="page-shell">
+      <section className="container-modern pt-8 md:pt-14">
+        <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="card-modern overflow-hidden">
+            <div className="bg-[#361B10] px-6 py-8 text-[#EBE4CD] md:px-10 md:py-12">
+              <p className="text-sm font-black uppercase tracking-[0.3em] opacity-75">
+                Exact time now
+              </p>
 
+              <h1 className="mt-4 text-3xl font-black leading-tight md:text-6xl">
+                Time in {selectedLocation.city}, {selectedLocation.country}
+              </h1>
 
-      {!submitted && (
-        <section className="mt-12 max-w-4xl">
-          <h1 className="text-5xl font-black">Time zone converter</h1>
+              <p className="mt-4 max-w-3xl text-base leading-7 opacity-80 md:text-xl">
+                Live world clock, timezone search, and device time accuracy
+                check for TIME.MR.
+              </p>
+            </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-[2fr_120px_160px]">
-            <label className="font-black">
-              Location or time zone
-              <select
-                value={fromTimezone}
-                onChange={(event) => setFromTimezone(event.target.value)}
-                className="mt-1 w-full bg-gray-100 px-4 py-4 text-xl font-normal outline-none"
-              >
-                {locations.map((location) => (
-                  <option key={location.city} value={location.timezone}>
-                    {location.city}, {location.country}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="p-6 md:p-10">
+              <p className="text-sm font-black uppercase tracking-[0.25em] text-[#7A604E]">
+                {deviceMessage}
+              </p>
 
-            <label className="font-black">
-              Time
-              <input
-                type="time"
-                value={time}
-                onChange={(event) => setTime(event.target.value)}
-                className="mt-1 w-full bg-gray-100 px-4 py-4 text-xl font-normal outline-none"
-              />
-            </label>
+              <div className="mt-6 break-words text-[64px] font-black leading-none tracking-tight text-[#361B10] sm:text-[100px] md:text-[150px] lg:text-[180px]">
+                {time || "--:--:--"}
+              </div>
 
-            <label className="font-black">
-              Date
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                className="mt-1 w-full bg-gray-100 px-4 py-4 text-xl font-normal outline-none"
-              />
-            </label>
+              <p className="mt-6 text-2xl font-bold text-[#361B10] md:text-4xl">
+                {date || "Loading date..."}
+              </p>
+
+              <p className="mt-3 break-words text-lg text-[#7A604E]">
+                Time zone: {selectedLocation.timezone}
+              </p>
+            </div>
           </div>
 
-          <div className="mt-5 max-w-xl">
-            <label className="font-black">
-              Other locations or time zones
-              <select
-                value={toTimezone}
-                onChange={(event) => setToTimezone(event.target.value)}
-                className="mt-1 w-full bg-gray-100 px-4 py-4 text-xl font-normal outline-none"
-              >
-                {locations.map((location) => (
-                  <option key={location.city} value={location.timezone}>
-                    {location.city}, {location.country}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <aside className="card-modern p-6 md:p-8">
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-[#7A604E]">
+              Selected city
+            </p>
 
-            <select
-              value={thirdTimezone}
-              onChange={(event) => setThirdTimezone(event.target.value)}
-              className="mt-2 w-full bg-gray-100 px-4 py-4 text-xl text-gray-600 outline-none"
-            >
-              <option value="">Location 3 optional</option>
-              {locations.map((location) => (
-                <option key={location.city} value={location.timezone}>
-                  {location.city}, {location.country}
-                </option>
-              ))}
-            </select>
-          </div>
+            <h2 className="mt-4 text-4xl font-black text-[#361B10]">
+              {selectedLocation.city}
+            </h2>
 
-          <div className="mt-5 space-y-2 text-xl">
-            <label className="block">
-              <input
-                type="radio"
-                checked={mode === "table"}
-                onChange={() => setMode("table")}
-                className="mr-2"
-              />
-              Show as table
-            </label>
+            <p className="mt-2 text-xl font-bold text-[#7A604E]">
+              {selectedLocation.country}
+            </p>
 
-            <label className="block">
-              <input
-                type="radio"
-                checked={mode === "single"}
-                onChange={() => setMode("single")}
-                className="mr-2"
-              />
-              Convert only the specified time
-            </label>
-          </div>
+            <div className="mt-8 rounded-[28px] bg-[#361B10] p-6 text-[#EBE4CD]">
+              <p className="text-sm font-black uppercase tracking-[0.22em] opacity-70">
+                Current time
+              </p>
 
-          <label className="mt-5 block max-w-xl font-black">
-            Event name optional
-            <input
-              value={eventName}
-              onChange={(event) => setEventName(event.target.value)}
-              placeholder="Birthday"
-              className="mt-1 w-full bg-gray-100 px-4 py-4 text-xl font-normal outline-none"
-            />
-          </label>
+              <p className="mt-3 text-5xl font-black">{time || "--:--"}</p>
 
-          <button
-            onClick={() => setSubmitted(true)}
-            className="mt-6 bg-gray-100 px-6 py-4 font-black hover:bg-gray-200"
-          >
-            Compare time
-          </button>
-        </section>
-      )}
+              <p className="mt-4 text-sm font-bold opacity-75">
+                {selectedLocation.timezone}
+              </p>
+            </div>
 
-      {submitted && mode === "single" && (
-        <section className="mt-12 max-w-5xl">
-          <button
-            onClick={() => setSubmitted(false)}
-            className="mb-8 font-bold underline"
-          >
-            ← Edit this event
-          </button>
-
-          <h1 className="text-5xl font-black">
-            {eventName || "Event"}
-          </h1>
-
-          <h2 className="mt-2 text-4xl font-black">
-            {time} on {getDateTimeForDisplay(convertedDate, fromTimezone)} in{" "}
-            {fromLocation?.city}, {fromLocation?.country}
-          </h2>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            {selectedLocations.map((location) => (
-              <div key={location.city} className="bg-gray-100 p-5">
-                <h3 className="text-3xl font-black">{location.city}</h3>
-                <p className="text-4xl font-black">
-                  {getOnlyTime(convertedDate, location.timezone)}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#7A604E]">
+                  Format
                 </p>
-                <p className="mt-2 text-sm text-gray-500">
-                  {getTimezoneOffsetLabel(location.timezone, convertedDate)}
+                <p className="mt-2 text-2xl font-black text-[#361B10]">
+                  {clockFormat === "12" ? "12H" : "24H"}
                 </p>
               </div>
+
+              <div className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#7A604E]">
+                  Cities
+                </p>
+                <p className="mt-2 text-2xl font-black text-[#361B10]">
+                  {locations.length}
+                </p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section className="container-modern mt-8">
+        <div className="card-modern p-6 md:p-8">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.25em] text-[#7A604E]">
+                Search
+              </p>
+
+              <h2 className="mt-2 text-3xl font-black text-[#361B10]">
+                Search city
+              </h2>
+            </div>
+
+            <p className="text-sm font-bold text-[#7A604E]">
+              Search by city, country, or timezone
+            </p>
+          </div>
+
+          <input
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Search Dhaka, Tokyo, London..."
+            className="input-modern mt-5 text-lg"
+          />
+
+          {searchText && (
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {filteredLocations.map((location) => (
+                <button
+                  key={`${location.city}-${location.timezone}`}
+                  onClick={() => {
+                    setSelectedLocation(location);
+                    setSearchText("");
+                  }}
+                  className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 p-5 text-left transition hover:-translate-y-1 hover:bg-[#361B10] hover:text-[#EBE4CD] hover:shadow-xl hover:shadow-[#361B10]/10"
+                >
+                  <h3 className="text-xl font-black">{location.city}</h3>
+                  <p className="mt-1 font-bold opacity-75">
+                    {location.country}
+                  </p>
+                  <p className="mt-2 break-words text-sm opacity-70">
+                    {location.timezone}
+                  </p>
+                </button>
+              ))}
+
+              {filteredLocations.length === 0 && (
+                <p className="rounded-3xl bg-[#FFF9E8]/80 p-5 font-bold text-[#7A604E]">
+                  No city found.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="container-modern mt-8">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-[#7A604E]">
+              Quick view
+            </p>
+
+            <h2 className="mt-2 text-3xl font-black text-[#361B10]">
+              World clocks
+            </h2>
+          </div>
+
+          <p className="text-sm font-bold text-[#7A604E]">
+            Click a city to make it the main clock.
+          </p>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {locations.slice(0, 10).map((location) => (
+            <button
+              key={`${location.city}-${location.timezone}`}
+              onClick={() => setSelectedLocation(location)}
+              className={`rounded-3xl p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#361B10]/10 ${
+                selectedLocation.city === location.city
+                  ? "bg-[#361B10] text-[#EBE4CD]"
+                  : "bg-[#FFF9E8]/80 text-[#361B10]"
+              }`}
+            >
+              <h3 className="text-xl font-black">{location.city}</h3>
+              <p className="mt-1 text-sm font-bold opacity-70">
+                {location.country}
+              </p>
+              <p className="mt-4 text-3xl font-black">
+                {getShortTime(location.timezone, clockFormat === "12")}
+              </p>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-12 bg-[#361B10] px-4 py-12 text-[#EBE4CD] md:py-16">
+        <div className="container-modern">
+          <div className="text-center">
+            <p className="text-sm font-black uppercase tracking-[0.3em] opacity-70">
+              City cloud
+            </p>
+
+            <h2 className="mt-3 text-3xl font-black md:text-5xl">
+              Pick any city
+            </h2>
+          </div>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {filteredLocations.map((location, index) => (
+              <button
+                key={`${location.city}-${index}`}
+                onClick={() => setSelectedLocation(location)}
+                className={`rounded-full px-4 py-2 font-black transition hover:bg-[#EBE4CD] hover:text-[#361B10] ${
+                  selectedLocation.city === location.city
+                    ? "bg-[#EBE4CD] text-[#361B10]"
+                    : "bg-[#EBE4CD]/10 text-[#EBE4CD]"
+                } ${
+                  index % 4 === 0
+                    ? "text-2xl md:text-4xl"
+                    : "text-base md:text-xl"
+                }`}
+              >
+                {location.city}
+              </button>
             ))}
           </div>
-
-          <div className="mt-8 inline-block bg-black px-5 py-2 text-3xl font-black text-white">
-            {fromLocation?.city} to {toLocation?.city}: {timeDifference}
-          </div>
-
-        <div className="mt-8 flex flex-col items-start gap-2 text-xl">
-  <button
-    onClick={() => {
-      setThirdTimezone("America/New_York");
-    }}
-    className="text-left underline hover:text-[#c83261]"
-  >
-    Show another time zone
-  </button>
-
-  <button
-    onClick={() => setSubmitted(false)}
-    className="text-left underline hover:text-[#c83261]"
-  >
-    Edit this event
-  </button>
-
-  <button
-    onClick={() => {
-      setSubmitted(false);
-      setFromTimezone("Asia/Dhaka");
-      setToTimezone("Europe/Paris");
-      setThirdTimezone("");
-      setTime("08:00");
-      setEventName("");
-      setMode("single");
-    }}
-    className="text-left underline hover:text-[#c83261]"
-  >
-    Create a new event
-  </button>
-</div>
-        </section>
-      )}
-
-      {submitted && mode === "table" && (
-  <section className="mt-10 max-w-4xl">
-    <button
-      onClick={() => setSubmitted(false)}
-      className="mb-4 text-sm font-bold underline"
-    >
-      ← Edit comparison
-    </button>
-
-    <h1 className="text-4xl font-black">
-      Time in {fromLocation?.city} and {toLocation?.city}
-    </h1>
-
-    <ul className="mt-3 list-disc pl-5 text-base leading-7">
-      <li>
-        When the time is <b>{time}</b> in {fromLocation?.city}, it is{" "}
-        <b>{toTime}</b> in {toLocation?.city}.
-      </li>
-      <li>Time difference is {timeDifference}.</li>
-      <li>
-        Click edit comparison to change city, date, or time.
-      </li>
-    </ul>
-
-    <h2 className="mt-8 text-2xl font-black">
-      Time difference from {fromLocation?.city}
-    </h2>
-
-    <div className="mt-4 w-[360px] space-y-3">
-      <div className="grid grid-cols-[60px_1fr_70px] items-center gap-2">
-        <span className="text-sm">UTC</span>
-        <div className="h-6 bg-black"></div>
-        <span className="text-sm">GMT</span>
-      </div>
-
-      <div className="grid grid-cols-[60px_1fr_70px] items-center gap-2">
-        <span className="text-sm">{toLocation?.city}</span>
-        <div className="h-6 bg-black"></div>
-        <span className="text-sm">{timeDifference}</span>
-      </div>
-    </div>
-
-    <div className="mt-10 w-[360px]">
-      <div className="grid grid-cols-2 border-b-2 border-black text-center">
-        <div className="py-2 text-2xl font-black">
-          {fromLocation?.city}
         </div>
+      </section>
 
-        <div className="border-l border-gray-400 py-2 text-2xl font-black">
-          {toLocation?.city} ({timeDifference})
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 text-center text-sm">
-        <div className="border-r border-gray-400">
-          {tableRows.map((row, index) => {
-            const isSelectedHour = row.baseTime === time;
-            const isWorkHour = index >= 12 && index <= 17;
-
-            return (
-              <div
-                key={`base-${index}`}
-                className={`py-1 ${
-                  isWorkHour ? "bg-green-100" : ""
-                } ${isSelectedHour ? "font-black text-[#c83261]" : ""}`}
-              >
-                {index === 0 && (
-                  <div className="mb-1 text-xs text-gray-500">
-                    {row.baseDay}
-                  </div>
-                )}
-
-                {row.baseTime}
-              </div>
-            );
-          })}
-        </div>
-
-        <div>
-          {tableRows.map((row, index) => {
-            const isSelectedHour = row.baseTime === time;
-            const isWorkHour = index >= 12 && index <= 17;
-
-            return (
-              <div
-                key={`target-${index}`}
-                className={`py-1 ${
-                  isWorkHour ? "bg-green-100" : ""
-                } ${isSelectedHour ? "font-black text-[#c83261]" : ""}`}
-              >
-                {index === 0 && (
-                  <div className="mb-1 text-xs text-gray-500">
-                    {row.targetDay}
-                  </div>
-                )}
-
-                {row.targetTime}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  </section>
-)}
+      <Footer />
     </main>
   );
 }

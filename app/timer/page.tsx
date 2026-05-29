@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function TimerPage() {
   const [inputMinutes, setInputMinutes] = useState(5);
@@ -29,6 +28,19 @@ export default function TimerPage() {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
 
+  const totalSetSeconds = inputMinutes * 60 + inputSeconds;
+
+  const progress = useMemo(() => {
+    if (totalSetSeconds <= 0) return 0;
+
+    const percentage = ((totalSetSeconds - seconds) / totalSetSeconds) * 100;
+
+    if (percentage < 0) return 0;
+    if (percentage > 100) return 100;
+
+    return percentage;
+  }, [seconds, totalSetSeconds]);
+
   function setCustomTimer() {
     const totalSeconds = inputMinutes * 60 + inputSeconds;
 
@@ -41,99 +53,131 @@ export default function TimerPage() {
     setSeconds(totalSeconds);
   }
 
+  function handleStart() {
+    if (seconds <= 0) {
+      setCustomTimer();
+      return;
+    }
+
+    setRunning(true);
+  }
+
   return (
-    <main className="min-h-screen bg-white px-6 py-8 text-[#2b2b2b]">
+    <main className="page-shell px-4 py-8">
+      <section className="container-modern">
+        <div className="card-modern mx-auto max-w-5xl p-6 text-center md:p-10">
+          <p className="text-sm font-black uppercase tracking-[0.3em] text-[#7A604E]">
+            TIME.MR Tool
+          </p>
 
-      <section className="mx-auto mt-20 max-w-4xl text-center">
-        <h1 className="text-5xl font-black">Timer</h1>
+          <h1 className="mt-4 text-4xl font-black text-[#361B10] md:text-6xl">
+            Timer
+          </h1>
 
-        <div className="mt-10 flex flex-col items-center justify-center gap-4 md:flex-row">
-          <label className="text-left font-black">
-            Minutes
-            <input
-              type="number"
-              min="0"
-              value={inputMinutes}
-              disabled={running}
-              onChange={(event) => setInputMinutes(Number(event.target.value))}
-              className="mt-2 block w-40 border bg-gray-100 px-4 py-3 text-xl outline-none focus:border-black"
-            />
-          </label>
+          <p className="mx-auto mt-4 max-w-2xl text-base text-[#7A604E] md:text-lg">
+            Set your own timer, start, pause, reset, or clear it anytime.
+          </p>
 
-          <label className="text-left font-black">
-            Seconds
-            <input
-              type="number"
-              min="0"
-              max="59"
-              value={inputSeconds}
-              disabled={running}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-
-                if (value > 59) {
-                  setInputSeconds(59);
-                } else if (value < 0) {
-                  setInputSeconds(0);
-                } else {
-                  setInputSeconds(value);
+          <div className="mx-auto mt-10 grid max-w-3xl gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <label className="text-left font-black text-[#361B10]">
+              Minutes
+              <input
+                type="number"
+                min="0"
+                value={inputMinutes}
+                disabled={running}
+                onChange={(event) =>
+                  setInputMinutes(Math.max(0, Number(event.target.value)))
                 }
+                className="input-modern mt-2 text-xl font-bold"
+              />
+            </label>
+
+            <label className="text-left font-black text-[#361B10]">
+              Seconds
+              <input
+                type="number"
+                min="0"
+                max="59"
+                value={inputSeconds}
+                disabled={running}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+
+                  if (value > 59) {
+                    setInputSeconds(59);
+                  } else if (value < 0) {
+                    setInputSeconds(0);
+                  } else {
+                    setInputSeconds(value);
+                  }
+                }}
+                className="input-modern mt-2 text-xl font-bold"
+              />
+            </label>
+
+            <button
+              onClick={setCustomTimer}
+              disabled={running}
+              className="btn-soft disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Set timer
+            </button>
+          </div>
+
+          <div className="mx-auto mt-10 max-w-3xl rounded-[32px] bg-[#361B10] p-6 text-[#EBE4CD] shadow-2xl shadow-[#361B10]/20 md:p-10">
+            <div className="break-words text-[72px] font-black leading-none tracking-tight sm:text-[110px] md:text-[150px]">
+              {String(minutes).padStart(2, "0")}:
+              {String(remainingSeconds).padStart(2, "0")}
+            </div>
+
+            <div className="mt-8 h-3 overflow-hidden rounded-full bg-[#EBE4CD]/20">
+              <div
+                className="h-full rounded-full bg-[#EBE4CD] transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            <p className="mt-4 text-sm font-bold opacity-80">
+              {running ? "Timer is running" : "Timer is paused"}
+            </p>
+          </div>
+
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            <button
+              onClick={handleStart}
+              disabled={running || seconds <= 0}
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Start
+            </button>
+
+            <button onClick={() => setRunning(false)} className="btn-soft">
+              Pause
+            </button>
+
+            <button
+              onClick={() => {
+                setRunning(false);
+                setSeconds(inputMinutes * 60 + inputSeconds);
               }}
-              className="mt-2 block w-40 border bg-gray-100 px-4 py-3 text-xl outline-none focus:border-black"
-            />
-          </label>
+              className="btn-soft"
+            >
+              Reset
+            </button>
 
-          <button
-            onClick={setCustomTimer}
-            disabled={running}
-            className="mt-6 bg-gray-200 px-8 py-4 font-black hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50 md:mt-8"
-          >
-            Set timer
-          </button>
-        </div>
-
-        <div className="mt-10 text-8xl font-black md:text-[150px]">
-          {String(minutes).padStart(2, "0")}:
-          {String(remainingSeconds).padStart(2, "0")}
-        </div>
-
-        <div className="mt-10 flex flex-wrap justify-center gap-4">
-          <button
-            onClick={() => setRunning(true)}
-            disabled={running || seconds <= 0}
-            className="bg-black px-8 py-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Start
-          </button>
-
-          <button
-            onClick={() => setRunning(false)}
-            className="bg-gray-200 px-8 py-4 font-black hover:bg-gray-300"
-          >
-            Pause
-          </button>
-
-          <button
-            onClick={() => {
-              setRunning(false);
-              setSeconds(inputMinutes * 60 + inputSeconds);
-            }}
-            className="bg-gray-200 px-8 py-4 font-black hover:bg-gray-300"
-          >
-            Reset
-          </button>
-
-          <button
-            onClick={() => {
-              setRunning(false);
-              setInputMinutes(5);
-              setInputSeconds(0);
-              setSeconds(300);
-            }}
-            className="bg-gray-200 px-8 py-4 font-black hover:bg-gray-300"
-          >
-            Clear
-          </button>
+            <button
+              onClick={() => {
+                setRunning(false);
+                setInputMinutes(5);
+                setInputSeconds(0);
+                setSeconds(300);
+              }}
+              className="btn-soft"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </section>
     </main>

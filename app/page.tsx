@@ -10,15 +10,19 @@ import {
   getTimeByTimezone,
 } from "@/lib/time";
 
+const bangladeshLocation =
+  locations.find((location) => location.timezone === "Asia/Dhaka") ||
+  locations.find((location) => location.city === "Dhaka") ||
+  locations[0];
+
 export default function Home() {
-  const [selectedLocation, setSelectedLocation] = useState<LocationItem>(
-    locations[0]
-  );
+  const [selectedLocation, setSelectedLocation] =
+    useState<LocationItem>(bangladeshLocation);
 
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [deviceDifference, setDeviceDifference] = useState<number | null>(null);
-
+  const [syncAccuracy, setSyncAccuracy] = useState<number | null>(null);
   const [searchText, setSearchText] = useState("");
   const [clockFormat, setClockFormat] = useState("24");
 
@@ -32,7 +36,10 @@ export default function Home() {
 
   useEffect(() => {
     const updateClock = () => {
-      setTime(getTimeByTimezone(selectedLocation.timezone, clockFormat === "12"));
+      setTime(
+        getTimeByTimezone(selectedLocation.timezone, clockFormat === "12")
+      );
+
       setDate(getDateByTimezone(selectedLocation.timezone));
     };
 
@@ -46,23 +53,45 @@ export default function Home() {
   useEffect(() => {
     async function checkDeviceTime() {
       try {
-        const requestStart = Date.now();
+        const samples: {
+          difference: number;
+          accuracy: number;
+        }[] = [];
 
-        const response = await fetch("/api/server-time", {
-          cache: "no-store",
-        });
+        for (let i = 0; i < 5; i++) {
+          const requestStart = Date.now();
 
-        const data = await response.json();
+          const response = await fetch("/api/server-time", {
+            cache: "no-store",
+          });
 
-        const requestEnd = Date.now();
-        const roundTrip = requestEnd - requestStart;
-        const estimatedServerTime = data.serverTime + roundTrip / 2;
+          const data = await response.json();
 
-        const differenceInSeconds = (requestEnd - estimatedServerTime) / 1000;
+          const requestEnd = Date.now();
 
-        setDeviceDifference(differenceInSeconds);
+          const roundTripTime = requestEnd - requestStart;
+          const estimatedServerTime = data.serverTime + roundTripTime / 2;
+
+          const differenceInSeconds =
+            (requestEnd - estimatedServerTime) / 1000;
+
+          const accuracyInSeconds = roundTripTime / 2 / 1000;
+
+          samples.push({
+            difference: differenceInSeconds,
+            accuracy: accuracyInSeconds,
+          });
+
+          await new Promise((resolve) => setTimeout(resolve, 120));
+        }
+
+        const bestSample = samples.sort((a, b) => a.accuracy - b.accuracy)[0];
+
+        setDeviceDifference(bestSample.difference);
+        setSyncAccuracy(bestSample.accuracy);
       } catch {
         setDeviceDifference(null);
+        setSyncAccuracy(null);
       }
     }
 
@@ -78,12 +107,12 @@ export default function Home() {
   if (deviceDifference !== null) {
     const value = Math.abs(deviceDifference).toFixed(1);
 
-    if (deviceDifference > 0.5) {
-      deviceMessage = `Your device clock is ${value} seconds ahead.`;
-    } else if (deviceDifference < -0.5) {
-      deviceMessage = `Your device clock is ${value} seconds behind.`;
+    if (deviceDifference > 0.1) {
+      deviceMessage = `Your clock is ${value} seconds ahead.`;
+    } else if (deviceDifference < -0.1) {
+      deviceMessage = `Your clock is ${value} seconds behind.`;
     } else {
-      deviceMessage = "Your device clock is accurate.";
+      deviceMessage = "Your clock is accurate.";
     }
   }
 
@@ -98,78 +127,150 @@ export default function Home() {
   });
 
   return (
-    <main className="min-h-screen bg-white text-[#2b2b2b]">
+    <main className="page-shell">
+      <section className="container-modern pt-8 md:pt-14">
+        <div className="card-modern overflow-hidden">
+          <div className="p-6 md:p-10">
+            <div>
+              <h1 className="text-3xl font-black leading-tight text-[#361B10] md:text-5xl">
+                {deviceMessage}
+              </h1>
 
+              <p className="mt-2 text-lg font-bold text-[#7A604E] md:text-xl">
+                {syncAccuracy !== null
+                  ? `Accuracy of synchronisation was ±${syncAccuracy.toFixed(
+                      3
+                    )} seconds.`
+                  : "Measuring synchronisation accuracy..."}
+              </p>
 
-      <section className="px-6 pt-6 md:px-12">
-        <p className="text-lg font-bold text-gray-600">{deviceMessage}</p>
+              <p className="mt-2 text-xl text-[#7A604E] md:text-2xl">
+                Time in {selectedLocation.country} now:
+              </p>
+            </div>
 
-        <h1 className="mt-8 text-3xl font-black md:text-5xl">
-          Time in {selectedLocation.city}, {selectedLocation.country} now:
-        </h1>
+            <div className="mt-8 break-words text-[72px] font-black leading-none tracking-tight text-[#361B10] sm:text-[120px] md:text-[180px] lg:text-[220px]">
+              {time || "--:--:--"}
+            </div>
 
-        <div className="mt-8 text-[70px] font-black leading-none tracking-tight sm:text-[110px] md:text-[160px] lg:text-[210px]">
-          {time}
+            <div className="mt-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-2xl font-bold text-[#361B10] md:text-4xl">
+                  {date || "Loading date..."}
+                </p>
+
+                <p className="mt-2 break-words text-lg text-[#7A604E]">
+                  Time zone: {selectedLocation.timezone}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 px-5 py-4">
+                <p className="text-sm font-black uppercase tracking-[0.22em] text-[#7A604E]">
+                  Selected city
+                </p>
+
+                <p className="mt-2 text-2xl font-black text-[#361B10]">
+                  {selectedLocation.city}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-modern mt-8">
+        <div className="card-modern p-6 md:p-8">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.25em] text-[#7A604E]">
+                Search
+              </p>
+
+              <h2 className="mt-2 text-3xl font-black text-[#361B10]">
+                Search city
+              </h2>
+            </div>
+
+            <p className="text-sm font-bold text-[#7A604E]">
+              Search by city, country, or timezone
+            </p>
+          </div>
+
+          <input
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Search Dhaka, Tokyo, London..."
+            className="input-modern mt-5 text-lg"
+          />
+
+          {searchText && (
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {filteredLocations.map((location) => (
+                <button
+                  key={`${location.city}-${location.timezone}`}
+                  onClick={() => {
+                    setSelectedLocation(location);
+                    setSearchText("");
+                  }}
+                  className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 p-5 text-left text-[#361B10] transition hover:-translate-y-1 hover:border-[#361B10]/20 hover:bg-[#F7F1DF] hover:shadow-xl hover:shadow-[#361B10]/10"
+                >
+                  <h3 className="text-xl font-black">{location.city}</h3>
+
+                  <p className="mt-1 font-bold text-[#7A604E]">
+                    {location.country}
+                  </p>
+
+                  <p className="mt-2 break-words text-sm text-[#7A604E]">
+                    {location.timezone}
+                  </p>
+                </button>
+              ))}
+
+              {filteredLocations.length === 0 && (
+                <p className="rounded-3xl bg-[#FFF9E8]/80 p-5 font-bold text-[#7A604E]">
+                  No city found.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="container-modern mt-8">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-[#7A604E]">
+              Quick view
+            </p>
+
+            <h2 className="mt-2 text-3xl font-black text-[#361B10]">
+              World clocks
+            </h2>
+          </div>
+
+          <p className="text-sm font-bold text-[#7A604E]">
+            Click a city to make it the main clock.
+          </p>
         </div>
 
-        <p className="mt-6 text-2xl md:text-4xl">{date}</p>
-
-        <p className="mt-3 text-lg text-gray-600">
-          Time zone: {selectedLocation.timezone}
-        </p>
-      </section>
-
-      <section className="mt-10 px-6 md:px-12">
-        <h2 className="mb-4 text-2xl font-black">Search city</h2>
-
-        <input
-          value={searchText}
-          onChange={(event) => setSearchText(event.target.value)}
-          placeholder="Search Dhaka, Tokyo, London..."
-          className="w-full max-w-2xl border px-5 py-4 text-xl outline-none focus:border-black"
-        />
-
-        {searchText && (
-          <div className="mt-4 grid max-w-4xl grid-cols-1 gap-2 md:grid-cols-2">
-            {filteredLocations.map((location) => (
-              <button
-                key={location.city}
-                onClick={() => {
-                  setSelectedLocation(location);
-                  setSearchText("");
-                }}
-                className="bg-gray-100 p-4 text-left hover:bg-black hover:text-white"
-              >
-                <h3 className="text-xl font-black">{location.city}</h3>
-                <p>{location.country}</p>
-                <p className="text-sm opacity-70">{location.timezone}</p>
-              </button>
-            ))}
-
-            {filteredLocations.length === 0 && (
-              <p className="text-gray-500">No city found.</p>
-            )}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-10 px-6 md:px-12">
-        <h2 className="mb-4 text-2xl font-black">World clocks</h2>
-
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {locations.slice(0, 10).map((location) => (
             <button
-              key={location.city}
+              key={`${location.city}-${location.timezone}`}
               onClick={() => setSelectedLocation(location)}
-              className={`p-4 text-left transition ${
+              className={`rounded-3xl p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#361B10]/10 ${
                 selectedLocation.city === location.city
-                  ? "bg-black text-white"
-                  : "bg-gray-100 hover:bg-gray-200"
+                  ? "bg-[#361B10] text-[#EBE4CD]"
+                  : "bg-[#FFF9E8]/80 text-[#361B10] hover:bg-[#F7F1DF]"
               }`}
             >
-              <h3 className="font-black">{location.city}</h3>
-              <p className="text-sm">{location.country}</p>
-              <p className="mt-2 text-2xl font-bold">
+              <h3 className="text-xl font-black">{location.city}</h3>
+
+              <p className="mt-1 text-sm font-bold opacity-70">
+                {location.country}
+              </p>
+
+              <p className="mt-4 text-3xl font-black">
                 {getShortTime(location.timezone, clockFormat === "12")}
               </p>
             </button>
@@ -177,29 +278,41 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mt-16 bg-[#2d2d2d] px-6 py-12 text-white md:px-12">
-        <div className="flex flex-wrap justify-center gap-4">
-          {filteredLocations.map((location, index) => (
-            <button
-              key={location.city}
-              onClick={() => setSelectedLocation(location)}
-              className={`font-black transition hover:bg-white hover:text-black ${
-                selectedLocation.city === location.city
-                  ? "bg-white px-3 py-1 text-black"
-                  : ""
-              } ${
-                index % 4 === 0
-                  ? "text-4xl md:text-5xl"
-                  : "text-xl md:text-2xl"
-              }`}
-            >
-              {location.city}
-            </button>
-          ))}
+      <section className="mt-12 bg-[#EBE4CD] px-4 py-12 text-[#361B10] md:py-16">
+        <div className="container-modern">
+          <div className="text-center">
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-[#7A604E]">
+              City cloud
+            </p>
+
+            <h2 className="mt-3 text-3xl font-black md:text-5xl">
+              Pick any city
+            </h2>
+          </div>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {filteredLocations.map((location, index) => (
+              <button
+                key={`${location.city}-${index}`}
+                onClick={() => setSelectedLocation(location)}
+                className={`rounded-full border px-4 py-2 font-black transition hover:-translate-y-0.5 hover:border-[#361B10]/20 hover:bg-[#FFF9E8] hover:text-[#361B10] ${
+                  selectedLocation.city === location.city
+                    ? "border-[#361B10]/20 bg-[#FFF9E8] text-[#361B10]"
+                    : "border-[#361B10]/10 bg-[#FFF9E8]/70 text-[#361B10]"
+                } ${
+                  index % 4 === 0
+                    ? "text-2xl md:text-4xl"
+                    : "text-base md:text-xl"
+                }`}
+              >
+                {location.city}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
-<Footer />
+      <Footer />
     </main>
   );
 }

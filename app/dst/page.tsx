@@ -7,7 +7,13 @@ type DstEvent = {
   month: string;
   day: number;
   region: string;
-  category: "Upcoming events" | "North America" | "Europe" | "Australia" | "Africa" | "South America";
+  category:
+    | "Upcoming events"
+    | "North America"
+    | "Europe"
+    | "Australia"
+    | "Africa"
+    | "South America";
   title: string;
   description: string;
   details: string;
@@ -46,8 +52,7 @@ const baseEvents: DstEvent[] = [
     region: "United Kingdom and Europe",
     category: "Europe",
     title: "Summer time starts",
-    description:
-      "Clocks move forward one hour in many European countries.",
+    description: "Clocks move forward one hour in many European countries.",
     details:
       "Many European countries switch to summer time near the end of March. Local names include British Summer Time and Central European Summer Time.",
   },
@@ -58,8 +63,7 @@ const baseEvents: DstEvent[] = [
     region: "Australia",
     category: "Australia",
     title: "Daylight saving time ends",
-    description:
-      "Clocks move back one hour in several Australian states.",
+    description: "Clocks move back one hour in several Australian states.",
     details:
       "Australian DST is not used everywhere. New South Wales, Victoria, South Australia, Tasmania, and the ACT usually observe it.",
   },
@@ -70,8 +74,7 @@ const baseEvents: DstEvent[] = [
     region: "Easter Island, Chile",
     category: "South America",
     title: "DST starts",
-    description:
-      "Clocks move forward one hour in selected Chilean regions.",
+    description: "Clocks move forward one hour in selected Chilean regions.",
     details:
       "Chile and Easter Island may have different transition rules. This project entry demonstrates how TIME.MR can show regional DST changes.",
   },
@@ -82,8 +85,7 @@ const baseEvents: DstEvent[] = [
     region: "United Kingdom and Europe",
     category: "Europe",
     title: "Summer time ends",
-    description:
-      "Clocks move back one hour in many European countries.",
+    description: "Clocks move back one hour in many European countries.",
     details:
       "At the end of summer time, many European locations return to standard time by moving clocks back one hour.",
   },
@@ -120,6 +122,7 @@ function makeEventDate(year: number, event: DstEvent) {
 
 export default function DSTPage() {
   const currentYear = new Date().getFullYear();
+
   const [selectedYear, setSelectedYear] = useState(
     years.includes(currentYear) ? currentYear : 2026
   );
@@ -137,151 +140,216 @@ export default function DSTPage() {
   const nextEvent = filteredEvents[0];
 
   return (
-    <main className="min-h-screen bg-white text-[#2b2b2b]">
-      <section className="px-6 py-8 md:px-16">
-        <h1 className="text-4xl font-black md:text-5xl">
-          Daylight Saving Time {selectedYear}
-        </h1>
+    <main className="page-shell px-4 py-8">
+      <section className="container-modern">
+        <div className="card-modern overflow-hidden">
+          <div className="grid gap-8 bg-[#361B10] px-6 py-10 text-[#EBE4CD] md:grid-cols-[1.4fr_0.6fr] md:px-10 md:py-14">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.3em] opacity-75">
+                TIME.MR
+              </p>
 
-        <p className="mt-4 max-w-4xl text-lg text-gray-600">
-          Will the time be set backwards or forwards? When? Where? This page
-          shows daylight saving time changes in a simple TIME.MR project format.
-        </p>
-      </section>
+              <h1 className="mt-4 text-4xl font-black leading-tight md:text-6xl">
+                Daylight Saving Time {selectedYear}
+              </h1>
 
-      <section className="h-[230px] bg-gradient-to-r from-pink-200 via-rose-100 to-cyan-100">
-        <div className="flex h-full items-center justify-center">
-          <div className="flex h-36 w-36 items-center justify-center rounded-full border-8 border-white bg-white shadow-xl">
-            <div className="relative h-24 w-24 rounded-full border-4 border-gray-300">
-              <div className="absolute left-1/2 top-3 h-10 w-1 -translate-x-1/2 rounded bg-gray-800"></div>
-              <div className="absolute left-1/2 top-1/2 h-1 w-8 -translate-y-1/2 rounded bg-gray-800"></div>
-              <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gray-800"></div>
+              <p className="mt-5 max-w-3xl text-base leading-7 opacity-80 md:text-xl md:leading-8">
+                Will the time be set backwards or forwards? When? Where? This
+                page shows daylight saving time changes in a modern TIME.MR
+                format.
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <span className="rounded-full bg-[#EBE4CD]/15 px-4 py-2 text-sm font-bold">
+                  Dynamic year filter
+                </span>
+
+                <span className="rounded-full bg-[#EBE4CD]/15 px-4 py-2 text-sm font-bold">
+                  Region categories
+                </span>
+
+                <span className="rounded-full bg-[#EBE4CD]/15 px-4 py-2 text-sm font-bold">
+                  Expandable info
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <div className="flex h-44 w-44 items-center justify-center rounded-full border border-[#EBE4CD]/30 bg-[#EBE4CD]/10 shadow-2xl shadow-black/20 backdrop-blur">
+                <div className="relative h-28 w-28 rounded-full border-4 border-[#EBE4CD]">
+                  <div className="absolute left-1/2 top-4 h-10 w-1 -translate-x-1/2 rounded bg-[#EBE4CD]" />
+                  <div className="absolute left-1/2 top-1/2 h-1 w-9 -translate-y-1/2 rounded bg-[#EBE4CD]" />
+                  <div className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#EBE4CD]" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section className="px-6 py-8 md:px-16">
-        <ul className="max-w-5xl list-disc space-y-2 pl-6 text-sm text-gray-700">
-          <li>
-            Daylight saving time means some places move clocks forward or
-            backward during the year.
-          </li>
-          <li>
-            Not all countries use daylight saving time. Bangladesh does not
-            currently use daylight saving time.
-          </li>
-          <li>
-            This TIME.MR page is dynamic inside the project. Later it can be
-            connected to a live timezone database.
-          </li>
-        </ul>
+          <div className="p-6 md:p-10">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 p-5">
+                <h2 className="text-xl font-black text-[#361B10]">
+                  What is DST?
+                </h2>
+                <p className="mt-2 text-[#7A604E]">
+                  Some places move clocks forward or backward during the year.
+                </p>
+              </div>
 
-        <div className="mt-8">
-          <h2 className="text-2xl font-black">
-            {nextEvent ? (
-              <>
-                The next event happens on {nextEvent.month} {nextEvent.day},{" "}
-                {selectedYear}, when {nextEvent.title.toLowerCase()} in{" "}
-                {nextEvent.region}.
-              </>
-            ) : (
-              "No DST events found for this filter."
-            )}
-          </h2>
+              <div className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 p-5">
+                <h2 className="text-xl font-black text-[#361B10]">
+                  Bangladesh
+                </h2>
+                <p className="mt-2 text-[#7A604E]">
+                  Bangladesh does not currently use daylight saving time.
+                </p>
+              </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <label className="font-bold">Scroll down or jump to:</label>
+              <div className="rounded-3xl border border-[#361B10]/10 bg-[#FFF9E8]/80 p-5">
+                <h2 className="text-xl font-black text-[#361B10]">
+                  TIME.MR
+                </h2>
+                <p className="mt-2 text-[#7A604E]">
+                  This page is interactive and can later connect to live data.
+                </p>
+              </div>
+            </div>
 
-            <select
-              value={selectedCategory}
-              onChange={(event) => {
-                setSelectedCategory(event.target.value);
-                setOpenEventId(null);
-              }}
-              className="border bg-gray-100 px-4 py-2"
-            >
-              {categories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
-          </div>
+            <section className="mt-8 rounded-[32px] bg-[#361B10] p-6 text-[#EBE4CD] md:p-8">
+              <p className="text-sm font-black uppercase tracking-[0.25em] opacity-70">
+                Next event
+              </p>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            {years.map((year) => (
-              <button
-                key={year}
-                onClick={() => {
-                  setSelectedYear(year);
-                  setOpenEventId(null);
-                }}
-                className={`px-4 py-2 text-sm font-bold ${
-                  year === selectedYear
-                    ? "bg-black text-white"
-                    : "bg-gray-100 text-[#2b2b2b] hover:bg-gray-200"
-                }`}
-              >
-                {year}
-              </button>
-            ))}
-          </div>
-        </div>
+              <h2 className="mt-3 text-2xl font-black leading-tight md:text-4xl">
+                {nextEvent ? (
+                  <>
+                    {nextEvent.month} {nextEvent.day}, {selectedYear}:{" "}
+                    {nextEvent.title} in {nextEvent.region}
+                  </>
+                ) : (
+                  "No DST events found for this filter."
+                )}
+              </h2>
 
-        <div className="mt-20 space-y-10">
-          {filteredEvents.map((event) => {
-            const eventDate = makeEventDate(selectedYear, event);
-            const weekday = new Intl.DateTimeFormat("en-US", {
-              weekday: "short",
-            }).format(eventDate);
-
-            const isOpen = openEventId === event.id;
-
-            return (
-              <article
-                key={`${event.id}-${selectedYear}`}
-                className="flex max-w-5xl gap-6"
-              >
-                <div className="flex h-24 w-24 shrink-0 flex-col items-center justify-center bg-gray-100 text-center">
-                  <span className="text-xs text-gray-500">{event.month}</span>
-
-                  <span className="text-3xl font-black text-[#c83261]">
-                    {event.day}
-                  </span>
-
-                  <span className="text-xs text-gray-500">{weekday}</span>
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-black">{event.region}</h3>
-
-                  <p className="mt-2 text-lg font-bold">{event.title}</p>
-
-                  <p className="mt-1 text-gray-600">{event.description}</p>
-
-                  <button
-                    onClick={() => setOpenEventId(isOpen ? null : event.id)}
-                    className="mt-3 text-sm font-bold underline"
+              <div className="mt-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                <label className="block font-black">
+                  Jump to region
+                  <select
+                    value={selectedCategory}
+                    onChange={(event) => {
+                      setSelectedCategory(event.target.value);
+                      setOpenEventId(null);
+                    }}
+                    className="mt-2 w-full rounded-2xl border border-[#EBE4CD]/20 bg-[#EBE4CD] px-4 py-3 text-[#361B10] outline-none"
                   >
-                    {isOpen ? "Hide info" : "More info"}
-                  </button>
+                    {categories.map((category) => (
+                      <option key={category}>{category}</option>
+                    ))}
+                  </select>
+                </label>
 
-                  {isOpen && (
-                    <div className="mt-4 max-w-3xl border-l-4 border-[#c83261] bg-gray-100 p-5">
-                      <p className="font-bold">
-                        {event.month} {event.day}, {selectedYear}
-                      </p>
-
-                      <p className="mt-2 text-gray-700">{event.details}</p>
-
-                      <p className="mt-3 text-sm text-gray-500">
-                        Category: {event.category}
-                      </p>
-                    </div>
-                  )}
+                <div className="flex flex-wrap gap-2">
+                  {years.map((year) => (
+                    <button
+                      key={year}
+                      onClick={() => {
+                        setSelectedYear(year);
+                        setOpenEventId(null);
+                      }}
+                      className={`rounded-full px-4 py-3 text-sm font-black transition ${
+                        year === selectedYear
+                          ? "bg-[#EBE4CD] text-[#361B10]"
+                          : "bg-[#EBE4CD]/10 text-[#EBE4CD] hover:bg-[#EBE4CD]/20"
+                      }`}
+                    >
+                      {year}
+                    </button>
+                  ))}
                 </div>
-              </article>
-            );
-          })}
+              </div>
+            </section>
+
+            <section className="mt-10 space-y-5">
+              {filteredEvents.map((event) => {
+                const eventDate = makeEventDate(selectedYear, event);
+                const weekday = new Intl.DateTimeFormat("en-US", {
+                  weekday: "short",
+                }).format(eventDate);
+
+                const isOpen = openEventId === event.id;
+
+                return (
+                  <article
+                    key={`${event.id}-${selectedYear}`}
+                    className="rounded-[28px] border border-[#361B10]/10 bg-[#FFF9E8]/80 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#361B10]/10 md:p-6"
+                  >
+                    <div className="flex flex-col gap-5 md:flex-row">
+                      <div className="flex h-24 w-24 shrink-0 flex-col items-center justify-center rounded-3xl bg-[#361B10] text-center text-[#EBE4CD]">
+                        <span className="text-xs font-bold opacity-70">
+                          {event.month}
+                        </span>
+
+                        <span className="text-4xl font-black">
+                          {event.day}
+                        </span>
+
+                        <span className="text-xs font-bold opacity-70">
+                          {weekday}
+                        </span>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <p className="text-sm font-black uppercase tracking-[0.22em] text-[#7A604E]">
+                              {event.category}
+                            </p>
+
+                            <h3 className="mt-2 text-2xl font-black text-[#361B10] md:text-3xl">
+                              {event.region}
+                            </h3>
+                          </div>
+
+                          <button
+                            onClick={() =>
+                              setOpenEventId(isOpen ? null : event.id)
+                            }
+                            className="btn-soft w-fit"
+                          >
+                            {isOpen ? "Hide info" : "More info"}
+                          </button>
+                        </div>
+
+                        <p className="mt-4 text-lg font-black text-[#361B10]">
+                          {event.title}
+                        </p>
+
+                        <p className="mt-2 leading-7 text-[#7A604E]">
+                          {event.description}
+                        </p>
+
+                        {isOpen && (
+                          <div className="mt-5 rounded-3xl border border-[#361B10]/10 bg-[#EBE4CD] p-5">
+                            <p className="font-black text-[#361B10]">
+                              {event.month} {event.day}, {selectedYear}
+                            </p>
+
+                            <p className="mt-2 leading-7 text-[#7A604E]">
+                              {event.details}
+                            </p>
+
+                            <p className="mt-4 text-sm font-bold text-[#7A604E]">
+                              Category: {event.category}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          </div>
         </div>
       </section>
     </main>
