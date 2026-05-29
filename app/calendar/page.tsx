@@ -42,12 +42,7 @@ export default function CalendarPage() {
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-[#2b2b2b] md:px-16">
-      <Link
-        href="/"
-        className="inline-block bg-[#c83261] px-6 py-4 text-sm font-black tracking-[0.25em] text-white"
-      >
-        TIME.MR
-      </Link>
+
 
       <section className="mt-10">
         <h1 className="text-4xl font-black md:text-5xl">{year} calendar</h1>

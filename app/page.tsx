@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SideMenu from "@/components/SideMenu";
+
 import { locations } from "@/data/locations";
 import { LocationItem } from "@/types/location";
 import {
@@ -18,7 +18,7 @@ export default function Home() {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [deviceDifference, setDeviceDifference] = useState<number | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+
   const [searchText, setSearchText] = useState("");
   const [clockFormat, setClockFormat] = useState("24");
 
@@ -99,20 +99,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white text-[#2b2b2b]">
-      <header className="flex items-center justify-between px-6 py-5 md:px-12">
-        <div className="bg-[#c83261] px-6 py-4 font-black tracking-[0.35em] text-white">
-          TIME.MR
-        </div>
 
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="text-4xl text-gray-500 hover:text-black"
-        >
-          ☰
-        </button>
-      </header>
-
-      <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <section className="px-6 pt-6 md:px-12">
         <p className="text-lg font-bold text-gray-600">{deviceMessage}</p>

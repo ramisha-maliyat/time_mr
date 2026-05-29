@@ -125,12 +125,7 @@ export default function ConverterPage() {
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-[#2b2b2b] md:px-12">
-      <Link
-        href="/"
-        className="inline-block bg-[#c83261] px-6 py-4 text-sm font-black tracking-[0.25em] text-white"
-      >
-        TIME.MR
-      </Link>
+
 
       {!submitted && (
         <section className="mt-12 max-w-4xl">
