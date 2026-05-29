@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import Footer from "@/components/Footer";
 import { locations } from "@/data/locations";
 import { LocationItem } from "@/types/location";
 import {
@@ -199,26 +199,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="bg-[#2d2d2d] px-6 py-14 text-white md:px-12">
-        <h2 className="text-3xl font-black">
-          TIME.MR - exact time for any time zone
-        </h2>
-
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <p>Exact time now</p>
-          <p>Time here & there</p>
-          <p>Your time zone</p>
-          <p>Time zones</p>
-          <p>Daylight Saving Time</p>
-          <p>Clock</p>
-          <p>Countdown</p>
-          <p>Timer</p>
-          <p>Calendar</p>
-          <p>UTC</p>
-          <p>Unix clock</p>
-          <p>Unix time converter</p>
-        </div>
-      </footer>
+<Footer />
     </main>
   );
 }

@@ -20,9 +20,7 @@ export default function UTCPage() {
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-[#2b2b2b]">
-      <Link href="/" className="font-bold underline">
-        ← Back home
-      </Link>
+
 
       <section className="mt-20 text-center">
         <h1 className="text-5xl font-black">UTC Time</h1>

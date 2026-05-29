@@ -34,9 +34,7 @@ export default function UnixConverterPage() {
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-[#2b2b2b] md:px-12">
-      <Link href="/" className="font-bold underline">
-        ← Back home
-      </Link>
+
 
       <section className="mx-auto mt-12 max-w-5xl">
         <h1 className="text-5xl font-black">Unix time converter</h1>

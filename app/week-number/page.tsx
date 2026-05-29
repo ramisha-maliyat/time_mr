@@ -22,9 +22,7 @@ export default function WeekNumberPage() {
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-center text-[#2b2b2b]">
-      <Link href="/" className="font-bold underline">
-        ← Back home
-      </Link>
+
 
       <h1 className="mt-20 text-5xl font-black">Week number</h1>
 
