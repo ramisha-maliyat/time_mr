@@ -1,65 +1,174 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { locations } from "@/data/locations";
+import { LocationItem } from "@/types/location";
+import {
+  getDateByTimezone,
+  getShortTime,
+  getTimeByTimezone,
+} from "@/lib/time";
 
 export default function Home() {
+  const [selectedLocation, setSelectedLocation] = useState<LocationItem>(
+    locations[0]
+  );
+
+  const [time, setTime] = useState("");
+  const [date, setDate] = useState("");
+  const [deviceDifference, setDeviceDifference] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateClock = () => {
+      setTime(getTimeByTimezone(selectedLocation.timezone));
+      setDate(getDateByTimezone(selectedLocation.timezone));
+    };
+
+    updateClock();
+
+    const interval = setInterval(updateClock, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    async function checkDeviceTime() {
+      try {
+        const requestStart = Date.now();
+
+        const response = await fetch("/api/server-time", {
+          cache: "no-store",
+        });
+
+        const data = await response.json();
+
+        const requestEnd = Date.now();
+        const roundTrip = requestEnd - requestStart;
+        const estimatedServerTime = data.serverTime + roundTrip / 2;
+
+        const differenceInSeconds = (requestEnd - estimatedServerTime) / 1000;
+
+        setDeviceDifference(differenceInSeconds);
+      } catch {
+        setDeviceDifference(null);
+      }
+    }
+
+    checkDeviceTime();
+
+    const interval = setInterval(checkDeviceTime, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  let deviceMessage = "Checking your device clock...";
+
+  if (deviceDifference !== null) {
+    const value = Math.abs(deviceDifference).toFixed(1);
+
+    if (deviceDifference > 0.5) {
+      deviceMessage = `Your device clock is ${value} seconds ahead.`;
+    } else if (deviceDifference < -0.5) {
+      deviceMessage = `Your device clock is ${value} seconds behind.`;
+    } else {
+      deviceMessage = "Your device clock is accurate.";
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-white text-[#2b2b2b]">
+      <header className="flex items-center justify-between px-6 py-5 md:px-12">
+        <div className="bg-[#c83261] px-6 py-4 font-black tracking-[0.35em] text-white">
+          TIME.MR
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="text-4xl text-gray-500">☰</div>
+      </header>
+
+      <section className="px-6 pt-6 md:px-12">
+        <p className="text-lg font-bold text-gray-600">{deviceMessage}</p>
+
+        <h1 className="mt-8 text-3xl font-black md:text-5xl">
+          Time in {selectedLocation.city}, {selectedLocation.country} now:
+        </h1>
+
+        <div className="mt-8 text-[70px] font-black leading-none tracking-tight sm:text-[110px] md:text-[160px] lg:text-[210px]">
+          {time}
         </div>
-      </main>
-    </div>
+
+        <p className="mt-6 text-2xl md:text-4xl">{date}</p>
+
+        <p className="mt-3 text-lg text-gray-600">
+          Time zone: {selectedLocation.timezone}
+        </p>
+      </section>
+
+      <section className="mt-10 px-6 md:px-12">
+        <h2 className="mb-4 text-2xl font-black">World clocks</h2>
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          {locations.slice(0, 10).map((location) => (
+            <button
+              key={location.city}
+              onClick={() => setSelectedLocation(location)}
+              className={`p-4 text-left transition ${
+                selectedLocation.city === location.city
+                  ? "bg-black text-white"
+                  : "bg-gray-100 hover:bg-gray-200"
+              }`}
+            >
+              <h3 className="font-black">{location.city}</h3>
+              <p className="text-sm">{location.country}</p>
+              <p className="mt-2 text-2xl font-bold">
+                {getShortTime(location.timezone)}
+              </p>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-16 bg-[#2d2d2d] px-6 py-12 text-white md:px-12">
+        <div className="flex flex-wrap justify-center gap-4">
+          {locations.map((location, index) => (
+            <button
+              key={location.city}
+              onClick={() => setSelectedLocation(location)}
+              className={`font-black transition hover:bg-white hover:text-black ${
+                selectedLocation.city === location.city
+                  ? "bg-white px-3 py-1 text-black"
+                  : ""
+              } ${
+                index % 4 === 0
+                  ? "text-4xl md:text-5xl"
+                  : "text-xl md:text-2xl"
+              }`}
+            >
+              {location.city}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <footer className="bg-[#2d2d2d] px-6 py-14 text-white md:px-12">
+        <h2 className="text-3xl font-black">
+          TIME.MR - exact time for any time zone
+        </h2>
+
+        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <p>Exact time now</p>
+          <p>Time here & there</p>
+          <p>Your time zone</p>
+          <p>Time zones</p>
+          <p>Daylight Saving Time</p>
+          <p>Clock</p>
+          <p>Countdown</p>
+          <p>Timer</p>
+          <p>Calendar</p>
+          <p>UTC</p>
+          <p>Unix clock</p>
+          <p>Unix time converter</p>
+        </div>
+      </footer>
+    </main>
   );
 }

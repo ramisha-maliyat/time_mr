@@ -1,0 +1,28 @@
+import { LocationItem } from "@/types/location";
+
+export const locations: LocationItem[] = [
+  { city: "Dhaka", country: "Bangladesh", timezone: "Asia/Dhaka" },
+  { city: "Delhi", country: "India", timezone: "Asia/Kolkata" },
+  { city: "Karachi", country: "Pakistan", timezone: "Asia/Karachi" },
+  { city: "Dubai", country: "United Arab Emirates", timezone: "Asia/Dubai" },
+  { city: "Bangkok", country: "Thailand", timezone: "Asia/Bangkok" },
+  { city: "Beijing", country: "China", timezone: "Asia/Shanghai" },
+  { city: "Tokyo", country: "Japan", timezone: "Asia/Tokyo" },
+  { city: "Singapore", country: "Singapore", timezone: "Asia/Singapore" },
+  { city: "Seoul", country: "South Korea", timezone: "Asia/Seoul" },
+  { city: "Hong Kong", country: "Hong Kong", timezone: "Asia/Hong_Kong" },
+  { city: "London", country: "United Kingdom", timezone: "Europe/London" },
+  { city: "Paris", country: "France", timezone: "Europe/Paris" },
+  { city: "Berlin", country: "Germany", timezone: "Europe/Berlin" },
+  { city: "Amsterdam", country: "Netherlands", timezone: "Europe/Amsterdam" },
+  { city: "New York", country: "United States", timezone: "America/New_York" },
+  { city: "Los Angeles", country: "United States", timezone: "America/Los_Angeles" },
+  { city: "Chicago", country: "United States", timezone: "America/Chicago" },
+  { city: "Toronto", country: "Canada", timezone: "America/Toronto" },
+  { city: "Sydney", country: "Australia", timezone: "Australia/Sydney" },
+  { city: "Auckland", country: "New Zealand", timezone: "Pacific/Auckland" },
+  { city: "Cairo", country: "Egypt", timezone: "Africa/Cairo" },
+  { city: "Cape Town", country: "South Africa", timezone: "Africa/Johannesburg" },
+  { city: "Lagos", country: "Nigeria", timezone: "Africa/Lagos" },
+  { city: "São Paulo", country: "Brazil", timezone: "America/Sao_Paulo" },
+];
