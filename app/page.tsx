@@ -1,6 +1,7 @@
 "use client";
-import SideMenu from "@/components/SideMenu";
+
 import { useEffect, useState } from "react";
+import SideMenu from "@/components/SideMenu";
 import { locations } from "@/data/locations";
 import { LocationItem } from "@/types/location";
 import {
@@ -17,10 +18,21 @@ export default function Home() {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [deviceDifference, setDeviceDifference] = useState<number | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);  
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [clockFormat, setClockFormat] = useState("24");
+
+  useEffect(() => {
+    const savedFormat = localStorage.getItem("time_mr_clock_format");
+
+    if (savedFormat) {
+      setClockFormat(savedFormat);
+    }
+  }, []);
+
   useEffect(() => {
     const updateClock = () => {
-      setTime(getTimeByTimezone(selectedLocation.timezone));
+      setTime(getTimeByTimezone(selectedLocation.timezone, clockFormat === "12"));
       setDate(getDateByTimezone(selectedLocation.timezone));
     };
 
@@ -29,7 +41,7 @@ export default function Home() {
     const interval = setInterval(updateClock, 1000);
 
     return () => clearInterval(interval);
-  }, [selectedLocation]);
+  }, [selectedLocation, clockFormat]);
 
   useEffect(() => {
     async function checkDeviceTime() {
@@ -75,6 +87,16 @@ export default function Home() {
     }
   }
 
+  const filteredLocations = locations.filter((location) => {
+    const text = searchText.toLowerCase();
+
+    return (
+      location.city.toLowerCase().includes(text) ||
+      location.country.toLowerCase().includes(text) ||
+      location.timezone.toLowerCase().includes(text)
+    );
+  });
+
   return (
     <main className="min-h-screen bg-white text-[#2b2b2b]">
       <header className="flex items-center justify-between px-6 py-5 md:px-12">
@@ -83,13 +105,15 @@ export default function Home() {
         </div>
 
         <button
-  onClick={() => setMenuOpen(true)}
-  className="text-4xl text-gray-500 hover:text-black"
->
-  ☰
-</button>
+          onClick={() => setMenuOpen(true)}
+          className="text-4xl text-gray-500 hover:text-black"
+        >
+          ☰
+        </button>
       </header>
-<SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+
       <section className="px-6 pt-6 md:px-12">
         <p className="text-lg font-bold text-gray-600">{deviceMessage}</p>
 
@@ -109,6 +133,40 @@ export default function Home() {
       </section>
 
       <section className="mt-10 px-6 md:px-12">
+        <h2 className="mb-4 text-2xl font-black">Search city</h2>
+
+        <input
+          value={searchText}
+          onChange={(event) => setSearchText(event.target.value)}
+          placeholder="Search Dhaka, Tokyo, London..."
+          className="w-full max-w-2xl border px-5 py-4 text-xl outline-none focus:border-black"
+        />
+
+        {searchText && (
+          <div className="mt-4 grid max-w-4xl grid-cols-1 gap-2 md:grid-cols-2">
+            {filteredLocations.map((location) => (
+              <button
+                key={location.city}
+                onClick={() => {
+                  setSelectedLocation(location);
+                  setSearchText("");
+                }}
+                className="bg-gray-100 p-4 text-left hover:bg-black hover:text-white"
+              >
+                <h3 className="text-xl font-black">{location.city}</h3>
+                <p>{location.country}</p>
+                <p className="text-sm opacity-70">{location.timezone}</p>
+              </button>
+            ))}
+
+            {filteredLocations.length === 0 && (
+              <p className="text-gray-500">No city found.</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10 px-6 md:px-12">
         <h2 className="mb-4 text-2xl font-black">World clocks</h2>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -125,7 +183,7 @@ export default function Home() {
               <h3 className="font-black">{location.city}</h3>
               <p className="text-sm">{location.country}</p>
               <p className="mt-2 text-2xl font-bold">
-                {getShortTime(location.timezone)}
+                {getShortTime(location.timezone, clockFormat === "12")}
               </p>
             </button>
           ))}
@@ -134,7 +192,7 @@ export default function Home() {
 
       <section className="mt-16 bg-[#2d2d2d] px-6 py-12 text-white md:px-12">
         <div className="flex flex-wrap justify-center gap-4">
-          {locations.map((location, index) => (
+          {filteredLocations.map((location, index) => (
             <button
               key={location.city}
               onClick={() => setSelectedLocation(location)}
