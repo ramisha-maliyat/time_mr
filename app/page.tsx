@@ -4,16 +4,90 @@ import { useEffect, useState } from "react";
 import Footer from "@/components/Footer";
 import { locations } from "@/data/locations";
 import { LocationItem } from "@/types/location";
-import {
-  getDateByTimezone,
-  getShortTime,
-  getTimeByTimezone,
-} from "@/lib/time";
+import { getShortTime, getTimeByTimezone } from "@/lib/time";
 
 const bangladeshLocation =
   locations.find((location) => location.timezone === "Asia/Dhaka") ||
   locations.find((location) => location.city === "Dhaka") ||
   locations[0];
+
+type SunInfo = {
+  sunrise: string;
+  sunset: string;
+  dayLength: string;
+};
+
+function getISOWeekNumber(date: Date) {
+  const copiedDate = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  );
+
+  const dayNumber = copiedDate.getUTCDay() || 7;
+
+  copiedDate.setUTCDate(copiedDate.getUTCDate() + 4 - dayNumber);
+
+  const yearStart = new Date(Date.UTC(copiedDate.getUTCFullYear(), 0, 1));
+
+  return Math.ceil(
+    ((copiedDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
+  );
+}
+
+function getDatePartsByTimezone(timezone: string) {
+  const now = new Date();
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "long",
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+  }).formatToParts(now);
+
+  const weekday = parts.find((part) => part.type === "weekday")?.value || "";
+  const month = parts.find((part) => part.type === "month")?.value || "";
+  const day = parts.find((part) => part.type === "day")?.value || "";
+  const year = parts.find((part) => part.type === "year")?.value || "";
+
+  return {
+    weekday,
+    month,
+    day,
+    year,
+    formatted: `${weekday}, ${month} ${Number(day)}, ${year}`,
+  };
+}
+
+function getDateObjectInTimezone(timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+
+  return new Date(year, month - 1, day);
+}
+
+function formatSunTime(value: string, timezone: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}
+
+function formatDayLength(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  return `${hours}h ${minutes}m`;
+}
 
 export default function Home() {
   const [selectedLocation, setSelectedLocation] =
@@ -25,6 +99,8 @@ export default function Home() {
   const [syncAccuracy, setSyncAccuracy] = useState<number | null>(null);
   const [searchText, setSearchText] = useState("");
   const [clockFormat, setClockFormat] = useState("24");
+  const [sunInfo, setSunInfo] = useState<SunInfo | null>(null);
+  const [sunLoading, setSunLoading] = useState(false);
 
   useEffect(() => {
     const savedFormat = localStorage.getItem("time_mr_clock_format");
@@ -36,11 +112,15 @@ export default function Home() {
 
   useEffect(() => {
     const updateClock = () => {
+      const timezoneDate = getDateObjectInTimezone(selectedLocation.timezone);
+      const dateParts = getDatePartsByTimezone(selectedLocation.timezone);
+      const weekNumber = getISOWeekNumber(timezoneDate);
+
       setTime(
         getTimeByTimezone(selectedLocation.timezone, clockFormat === "12")
       );
 
-      setDate(getDateByTimezone(selectedLocation.timezone));
+      setDate(`${dateParts.formatted}, week ${weekNumber}`);
     };
 
     updateClock();
@@ -49,6 +129,67 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, [selectedLocation, clockFormat]);
+
+  useEffect(() => {
+    async function loadSunInfo() {
+      try {
+        setSunLoading(true);
+        setSunInfo(null);
+
+        const geoResponse = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+            selectedLocation.city
+          )}&count=10&language=en&format=json`
+        );
+
+        const geoData = await geoResponse.json();
+
+        const matchedLocation =
+          geoData.results?.find((result: { country?: string }) =>
+            result.country
+              ?.toLowerCase()
+              .includes(selectedLocation.country.toLowerCase())
+          ) || geoData.results?.[0];
+
+        if (!matchedLocation) {
+          setSunInfo(null);
+          return;
+        }
+
+        const latitude = matchedLocation.latitude;
+        const longitude = matchedLocation.longitude;
+
+        const sunResponse = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=sunrise,sunset,daylight_duration&timezone=${encodeURIComponent(
+            selectedLocation.timezone
+          )}`
+        );
+
+        const sunData = await sunResponse.json();
+
+        const sunriseValue = sunData.daily?.sunrise?.[0];
+        const sunsetValue = sunData.daily?.sunset?.[0];
+        const daylightValue = sunData.daily?.daylight_duration?.[0];
+
+        if (!sunriseValue || !sunsetValue || !daylightValue) {
+          setSunInfo(null);
+          return;
+        }
+
+        setSunInfo({
+          sunrise: formatSunTime(sunriseValue, selectedLocation.timezone),
+          sunset: formatSunTime(sunsetValue, selectedLocation.timezone),
+          dayLength: formatDayLength(daylightValue),
+        });
+      } catch {
+        setSunInfo(null);
+      } finally {
+        setSunLoading(false);
+      }
+    }
+
+    loadSunInfo();
+  }, [selectedLocation]);
 
   useEffect(() => {
     async function checkDeviceTime() {
@@ -153,10 +294,18 @@ export default function Home() {
               {time || "--:--:--"}
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-2xl font-bold text-[#361B10] md:text-4xl">
                   {date || "Loading date..."}
+                </p>
+
+                <p className="mt-3 text-lg text-[#7A604E]">
+                  {sunLoading
+                    ? "Sun: loading sunrise and sunset..."
+                    : sunInfo
+                    ? `Sun: ↑ ${sunInfo.sunrise} ↓ ${sunInfo.sunset} (${sunInfo.dayLength})`
+                    : "Sun: sunrise and sunset unavailable"}
                 </p>
 
                 <p className="mt-2 break-words text-lg text-[#7A604E]">

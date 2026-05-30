@@ -1,6 +1,7 @@
 import { LocationItem } from "@/types/location";
 
 export const locations: LocationItem[] = [
+    { city: "Dhaka", country: "Bangladesh", timezone: "Asia/Dhaka" },
   { city: "Abu Dhabi", country: "United Arab Emirates", timezone: "Asia/Dubai" },
   { city: "Addis Ababa", country: "Ethiopia", timezone: "Africa/Addis_Ababa" },
   { city: "Amman", country: "Jordan", timezone: "Asia/Amman" },
@@ -24,7 +25,7 @@ export const locations: LocationItem[] = [
   { city: "Chicago", country: "United States", timezone: "America/Chicago" },
   { city: "Damascus", country: "Syria", timezone: "Asia/Damascus" },
   { city: "Delhi", country: "India", timezone: "Asia/Kolkata" },
-  { city: "Dhaka", country: "Bangladesh", timezone: "Asia/Dhaka" },
+
   { city: "Dubai", country: "United Arab Emirates", timezone: "Asia/Dubai" },
   { city: "Dublin", country: "Ireland", timezone: "Europe/Dublin" },
   { city: "Frankfurt", country: "Germany", timezone: "Europe/Berlin" },
